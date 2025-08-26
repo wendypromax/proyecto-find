@@ -1,87 +1,98 @@
-// src/pages/login/Login.jsx
 import React, { useState } from 'react';
-import { FaGoogle, FaFacebookF } from 'react-icons/fa';
+import { Link } from 'react-router-dom';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const togglePassword = () => {
+    setShowPassword(!showPassword);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError('Todos los campos son obligatorios');
-      return;
-    }
-    setError('');
-    alert(`Correo: ${email}\nContraseña: ${password}`);
+    console.log('Email:', email);
+    console.log('Password:', password);
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-pink-100 to-yellow-100">
-      <div className="bg-white p-12 rounded-xl shadow-lg w-96 max-w-lg h-[770px] flex flex-col justify-center">
-        {/* Título con gradiente multicolor */}
-        <h2 className="text-4xl font-bold text-center mb-2 bg-clip-text text-transparent bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500">
-          Find and Rate
-        </h2>
+    <div className="min-h-screen flex justify-center items-center bg-gradient-to-br from-pink-200 via-pink-100 to-yellow-200 relative font-sans p-6">
+      {/* Volver al inicio */}
+      <Link to="/" className="absolute top-5 left-5 text-gray-700 text-sm hover:underline">
+        ← Volver al inicio
+      </Link>
 
-        {/* Mensaje de bienvenida */}
-        <p className="text-center text-gray-600 mb-8">
-          ¡Bienvenido de vuelta! Inicia sesión para continuar
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-80 text-center">
+        {/* Logo */}
+        <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-orange-400 via-pink-500 to-purple-500 bg-clip-text text-transparent">
+          Find <span className="text-orange-500">&</span> Rate <span className="text-purple-500">★</span>
+        </h1>
+
+        <p className="text-sm text-gray-600 mb-6">
+          ¡Bienvenido de vuelta! Inicia sesión para continuar!
         </p>
 
         {/* Formulario */}
-        <form onSubmit={handleSubmit} className="flex flex-col flex-1 justify-center">
-          {/* Label + Input Email */}
-          <label className="mb-1 text-gray-700 font-medium">Email</label>
+        <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
+          <label className="text-left text-sm font-medium text-gray-700">Email</label>
           <input
             type="email"
-            placeholder="Correo electrónico"
+            placeholder="tucorreo@email.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="mb-4 px-4 py-3 border rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300"
+            required
+            className="w-full px-4 py-2 border-2 border-pink-300 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
           />
 
-          {/* Label + Input Contraseña */}
-          <label className="mb-1 text-gray-700 font-medium">Contraseña</label>
-          <input
-            type="password"
-            placeholder="Contraseña"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="mb-6 px-4 py-3 border rounded-full focus:outline-none focus:ring-2 focus:ring-pink-300"
-          />
+          <label className="text-left text-sm font-medium text-gray-700 mt-2">Contraseña</label>
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              placeholder="********"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full px-4 py-2 border-2 border-pink-300 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
+            />
+            <span
+              className="absolute right-4 top-1/2 transform -translate-y-1/2 cursor-pointer"
+              onClick={togglePassword}
+            >
+              {showPassword ? '🙈' : '👁️'}
+            </span>
+          </div>
 
-          {error && <div className="text-red-500 text-sm mb-4">{error}</div>}
+          {/* Olvidaste tu contraseña */}
+          <div className="text-right text-xs mt-1">
+            <Link to="/recuperar" className="text-pink-500 hover:underline">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
 
-          {/* Botón principal multicolor */}
           <button
             type="submit"
-            className="bg-gradient-to-r from-pink-500 via-yellow-400 to-purple-500 hover:from-pink-600 hover:via-yellow-500 hover:to-purple-600 text-white py-3 rounded-full font-bold text-lg transition-all mb-4"
+            className="mt-4 py-2 bg-gradient-to-r from-orange-400 to-pink-500 text-white font-bold rounded-full hover:opacity-90 transition"
           >
             Iniciar Sesión
           </button>
-
-          {/* Línea separadora */}
-          <p className="text-center text-gray-500 mb-6">- o continúa con -</p>
         </form>
 
+        {/* Divider */}
+        <p className="my-4 text-gray-500 text-sm">– o continúa con –</p>
+
         {/* Botones sociales */}
-        <div className="flex justify-center gap-6 mb-6">
-          <button className="flex items-center justify-center bg-red-500 hover:bg-red-600 text-white p-4 rounded-full shadow-lg transition-transform transform hover:scale-105">
-            <FaGoogle size={22} />
-          </button>
-          <button className="flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-full shadow-lg transition-transform transform hover:scale-105">
-            <FaFacebookF size={22} />
-          </button>
+        <div className="flex justify-center gap-5 mb-4">
+          <button className="bg-white border border-gray-300 rounded-full w-11 h-11 text-lg font-bold">G</button>
+          <button className="bg-white border border-gray-300 rounded-full w-11 h-11 text-lg font-bold">f</button>
         </div>
 
-        {/* Mensaje de registro */}
-        <p className="text-center text-gray-600 mt-2">
-          ¿No tienes cuenta?{' '}
-          <a href="#" className="text-pink-500 font-semibold hover:underline">
+        {/* Registro */}
+        <p className="text-xs text-gray-600">
+          ¿No tienes cuenta?{" "}
+          <Link to="/registro" className="text-pink-500 font-semibold hover:underline">
             Regístrate aquí
-          </a>
+          </Link>
         </p>
       </div>
     </div>
