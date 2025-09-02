@@ -1,101 +1,50 @@
-import express from "express";
-import mysql from "mysql2";
-import cors from "cors";
-import dotenv from "dotenv";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
-
-dotenv.config();
+import express from 'express';
+import { MongoClient } from 'mongodb';
 
 const app = express();
-app.use(cors());
+const port = 3000;
+
+const uri = 'mongodb://localhost:27017';
+const client = new MongoClient(uri);
+const dbName = 'mi_base_de_datos';
+
 app.use(express.json());
 
-// 🔹 conexión a la base de datos
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_NAME,
+// Ruta raíz
+app.get('/', (req, res) => {
+  res.send('Servidor activo ✅');
 });
 
-// 🔹 ruta de prueba
-app.get("/", (req, res) => {
-  res.send("Backend funcionando 🚀");
-});
+// Endpoint de registro
+app.post('/register', async (req, res) => {
+  const { nombre, edad, email, password } = req.body;
 
-// 🔹 registro de usuarios
-app.post("/registro", async (req, res) => {
-  const { nombre, apellido, pais, email, telefono, password, edad, genero } = req.body;
+  if (!nombre || !edad || !email || !password) {
+    return res.status(400).send({ message: 'Todos los campos son obligatorios' });
+  }
 
   try {
-    const hashedPassword = await bcrypt.hash(password, 10);
+    await client.connect();
+    const db = client.db(dbName);
+    const collection = db.collection('usuarios');
 
-    const sql = `
-      INSERT INTO usuarios (nombre, apellido, pais, email, telefono, password, edad, genero) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    const existe = await collection.findOne({ email });
+    if (existe) {
+      return res.status(400).send({ message: 'El usuario ya existe' });
+    }
 
-    db.query(
-      sql,
-      [nombre, apellido, pais, email, telefono, hashedPassword, edad, genero],
-      (err, result) => {
-        if (err) return res.status(500).json({ error: err });
-        res.json({ 
-          message: "Usuario registrado con éxito", 
-          userId: result.insertId 
-        });
-      }
-    );
+    const resultado = await collection.insertOne({ nombre, edad, email, password });
+    res.status(201).send({ message: 'Usuario registrado', id: resultado.insertedId });
+
   } catch (error) {
-    res.status(500).json({ error: "Error al registrar usuario" });
+    console.error(error);
+    res.status(500).send({ message: 'Error en el servidor' });
+  } finally {
+    await client.close();
   }
 });
 
-// 🔹 login de usuarios
-app.post("/login", (req, res) => {
-  const { email, password } = req.body;
-
-  db.query("SELECT * FROM usuarios WHERE email = ?", [email], async (err, result) => {
-    if (err) return res.status(500).json({ error: err });
-    if (result.length === 0) return res.status(401).json({ error: "Usuario no encontrado" });
-
-    const user = result[0];
-    const isValid = await bcrypt.compare(password, user.password);
-
-    if (!isValid) return res.status(401).json({ error: "Contraseña incorrecta" });
-
-    // 🔑 generar token JWT
-    const token = jwt.sign({ id: user.id, email: user.email }, process.env.JWT_SECRET, {
-      expiresIn: "1h",
-    });
-
-    res.json({ 
-      message: "Login exitoso", 
-      token, 
-      user: { id: user.id, nombre: user.nombre, email: user.email } 
-    });
-  });
+app.listen(port, () => {
+  console.log(`Servidor corriendo en http://localhost:${port}`);
 });
 
-// 🔹 middleware para proteger rutas
-function verifyToken(req, res, next) {
-  const token = req.headers["authorization"];
-  if (!token) return res.status(403).json({ error: "Token requerido" });
-
-  jwt.verify(token.split(" ")[1], process.env.JWT_SECRET, (err, decoded) => {
-    if (err) return res.status(401).json({ error: "Token inválido" });
-    req.user = decoded;
-    next();
-  });
-}
-
-// 🔹 ejemplo de ruta protegida
-app.get("/perfil", verifyToken, (req, res) => {
-  res.json({ message: "Acceso permitido", user: req.user });
-});
-
-// 🔹 iniciar servidor
-app.listen(process.env.PORT, () => {
-  console.log(`Servidor backend corriendo en http://localhost:${process.env.PORT}`);
-});
