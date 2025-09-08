@@ -4,6 +4,11 @@ import Conocenos from "./pages/Conocenos";
 import Profile from "./pages/Profile";
 import Registro from "./pages/Registro";
 import Login from "./pages/Login";
+import Terminos from "./pages/Terminos";
+import Privacidad from "./pages/Privacidad";
+import RecuperarCuenta from "./pages/RecuperarCuenta";
+import { NavLink } from "react-router-dom";
+
 
 function App() {
   return (
@@ -30,6 +35,10 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/registro" element={<Registro />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/terminos" element={<Terminos />} />
+        <Route path="/privacidad" element={<Privacidad />} />
+        <Route path="/recuperar-cuenta" element={<RecuperarCuenta />} />
+
       </Routes>
     </Router>
   );

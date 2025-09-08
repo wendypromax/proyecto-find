@@ -1,11 +1,11 @@
 import React from "react";
+import { Link } from "react-router-dom";  // Importamos Link
 
 const Profile = () => {
   const nombreUsuario = "María"; // Puedes reemplazarlo dinámicamente si quieres
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_center,_#ffeecc_0%,_#e0c6ff_50%,_#d8bbff_100%)] font-[Poppins] text-gray-800 p-6">
-      
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_center,_#ffeecc_0%,_#e0c6ff_50%,_#d8bbff_100%)] font-[Poppins] text-gray-800 p-6 flex flex-col">
       {/* Bienvenida */}
       <h2 className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-500 to-orange-400 bg-clip-text text-transparent mb-2 text-center">
         ¡Bienvenida de vuelta, {nombreUsuario}! <span className="inline-block">👋</span>
@@ -59,7 +59,7 @@ const Profile = () => {
       </div>
 
       {/* Reseñas recientes */}
-      <div className="bg-white/80 rounded-2xl shadow-lg p-6 max-w-2xl mx-auto">
+      <div className="bg-white/80 rounded-2xl shadow-lg p-6 max-w-2xl mx-auto flex-grow">
         <h2 className="text-xl font-bold text-gray-600 text-center mb-6">
           Tus Reseñas Recientes
         </h2>
@@ -97,8 +97,22 @@ const Profile = () => {
           </p>
         </div>
       </div>
+
+      {/* Footer */}
+      <footer className="mt-10 py-6 text-center text-xs text-gray-500">
+        <p>© {new Date().getFullYear()} Tu Plataforma de Reseñas</p>
+        <div className="flex justify-center gap-4 mt-1">
+          <Link to="/terminos" className="hover:text-pink-600 hover:underline transition-colors">
+            Términos
+          </Link>
+          <Link to="/privacidad" className="hover:text-pink-600 hover:underline transition-colors">
+            Privacidad
+          </Link>
+        </div>
+      </footer>
     </div>
   );
 };
 
 export default Profile;
+

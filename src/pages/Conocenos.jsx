@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 const Conocenos = () => {
   return (
@@ -16,8 +17,28 @@ const Conocenos = () => {
         Nuestro objetivo es brindarte una comunidad confiable y amigable que te apoye con recomendaciones reales y honestas,
         para que siempre tengas un lugar a dónde ir y una experiencia que disfrutar.
       </p>
+
+      {/* Footer */}
+      <footer className="mt-10 pt-6 border-t border-[#e5e4f0] text-sm text-[#9b9ab9]">
+  <p className="mb-2">© {new Date().getFullYear()} Tu Plataforma de Reseñas</p>
+  <div className="flex justify-center gap-6">
+    <Link
+      to="/terminos"
+      className="text-pink-600 hover:text-pink-700 hover:underline transition"
+    >
+      Términos
+    </Link>
+    <Link
+      to="/privacidad"
+      className="text-pink-600 hover:text-pink-700 hover:underline transition"
+    >
+      Privacidad
+    </Link>
+  </div>
+</footer>
     </div>
   );
 };
 
 export default Conocenos;
+
