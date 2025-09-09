@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // <-- Importa useNavigate
 import logo from '../assets/find-rate-logo.png'; // Ajusta la ruta según tu estructura
 
-
-
 const Login = () => {
+  const navigate = useNavigate(); // <-- Hook para redirección
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -15,8 +14,14 @@ const Login = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Email:', email);
-    console.log('Password:', password);
+
+    // Simulación de validación (aquí iría tu llamada a la API real)
+    if (email === 'usuario@demo.com' && password === '123456') {
+      console.log('Login exitoso');
+      navigate('/home'); // <-- Redirige a la página Home.jsx
+    } else {
+      alert('Credenciales incorrectas. Inténtalo de nuevo.');
+    }
   };
 
   return (
@@ -78,13 +83,11 @@ const Login = () => {
 
           {/* Olvidaste tu contraseña */}
           <Link
-  to="/recuperar-cuenta"
-  className="text-pink-600 hover:underline text-sm float-right"
->
-  ¿Olvidaste tu contraseña?
-</Link>
-
-
+            to="/recuperar-cuenta"
+            className="text-pink-600 hover:underline text-sm float-right"
+          >
+            ¿Olvidaste tu contraseña?
+          </Link>
 
           <button
             type="submit"

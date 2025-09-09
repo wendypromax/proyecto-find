@@ -16,11 +16,25 @@ const Registro = () => {
     genero: "",
   });
 
+  const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Manejar cambios en inputs
+  // Manejar cambios en inputs con validaciones en tiempo real
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+
+    // Solo letras y espacios para nombre y apellido
+    if ((name === "nombre" || name === "apellido") && !/^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]*$/.test(value)) {
+      return; // Ignora caracteres inválidos
+    }
+
+    // Solo números para teléfono
+    if (name === "telefono" && !/^[0-9]*$/.test(value)) {
+      return; // Ignora letras o caracteres especiales
+    }
+
+    setFormData({ ...formData, [name]: value });
   };
 
   // Cambiar tipo usuario o empresario
@@ -28,12 +42,51 @@ const Registro = () => {
     setFormData({ ...formData, tipoUsuario: tipo });
   };
 
+  // Validación de campos antes de enviar
+  const validate = () => {
+    const newErrors = {};
+
+    if (!formData.nombre.trim()) newErrors.nombre = "El nombre es obligatorio.";
+    if (!formData.apellido.trim()) newErrors.apellido = "El apellido es obligatorio.";
+    if (!formData.pais.trim()) newErrors.pais = "El país es obligatorio.";
+
+    // Validación correo electrónico
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Ingresa un correo electrónico válido.";
+    }
+
+    // Teléfono: mínimo 7 y máximo 15 dígitos
+    if (!/^[0-9]{7,15}$/.test(formData.telefono)) {
+      newErrors.telefono = "El teléfono debe contener entre 7 y 15 números.";
+    }
+
+    // Contraseña
+    if (formData.password.length < 6)
+      newErrors.password = "La contraseña debe tener al menos 6 caracteres.";
+
+    // Confirmación de contraseña
+    if (formData.password !== formData.confirmPassword)
+      newErrors.confirmPassword = "Las contraseñas no coinciden.";
+
+    // Edad mínima 18
+    if (!formData.edad || formData.edad < 18)
+      newErrors.edad = "Debes tener al menos 18 años para registrarte.";
+
+    if (!formData.genero) newErrors.genero = "Selecciona un género.";
+
+    return newErrors;
+  };
+
   // Enviar formulario
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
+    setSuccessMessage("");
 
-    if (formData.password !== formData.confirmPassword) {
-      alert("Las contraseñas no coinciden");
+    const validationErrors = validate();
+
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
       return;
     }
 
@@ -46,9 +99,26 @@ const Registro = () => {
       });
 
       const data = await res.json();
-      alert(data.message);
+
+      if (res.ok) {
+        setSuccessMessage("¡Registro exitoso! 🎉 Ahora puedes iniciar sesión.");
+        setFormData({
+          tipoUsuario: "usuario",
+          nombre: "",
+          apellido: "",
+          pais: "",
+          email: "",
+          telefono: "",
+          password: "",
+          confirmPassword: "",
+          edad: "",
+          genero: "",
+        });
+      } else {
+        setErrors({ general: data.message || "Ocurrió un error al registrar." });
+      }
     } catch (error) {
-      alert("Error al registrar, intenta nuevamente.");
+      setErrors({ general: "Error de conexión con el servidor." });
     } finally {
       setLoading(false);
     }
@@ -96,96 +166,132 @@ const Registro = () => {
             </button>
           </div>
 
-          <form
-            className="flex flex-col gap-3 text-left"
-            onSubmit={handleSubmit}
-          >
-            <input
-              type="text"
-              name="nombre"
-              placeholder="Nombre"
-              required
-              value={formData.nombre}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
-            />
-            <input
-              type="text"
-              name="apellido"
-              placeholder="Apellido"
-              required
-              value={formData.apellido}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
-            />
-            <input
-              type="text"
-              name="pais"
-              placeholder="País"
-              required
-              value={formData.pais}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
-            />
-            <input
-              type="email"
-              name="email"
-              placeholder="Correo electrónico"
-              required
-              value={formData.email}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
-            />
-            <input
-              type="tel"
-              name="telefono"
-              placeholder="Número de teléfono"
-              required
-              value={formData.telefono}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
-            />
-            <input
-              type="password"
-              name="password"
-              placeholder="Contraseña"
-              required
-              value={formData.password}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
-            />
-            <input
-              type="password"
-              name="confirmPassword"
-              placeholder="Confirmar contraseña"
-              required
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
-            />
-            <input
-              type="number"
-              name="edad"
-              placeholder="Edad"
-              required
-              value={formData.edad}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
-            />
+          {/* Mensaje de error general */}
+          {errors.general && (
+            <div className="bg-red-100 text-red-700 p-2 rounded mb-3 text-sm">
+              {errors.general}
+            </div>
+          )}
 
-            <select
-              name="genero"
-              required
-              value={formData.genero}
-              onChange={handleChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-full bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-400"
-            >
-              <option value="">Género</option>
-              <option value="mujer">Mujer</option>
-              <option value="hombre">Hombre</option>
-              <option value="otro">Otro</option>
-            </select>
+          {/* Mensaje de éxito */}
+          {successMessage && (
+            <div className="bg-green-100 text-green-700 p-2 rounded mb-3 text-sm">
+              {successMessage}
+            </div>
+          )}
 
+          <form className="flex flex-col gap-3 text-left" onSubmit={handleSubmit}>
+            {/* Nombre */}
+            <div>
+              <input
+                type="text"
+                name="nombre"
+                placeholder="Nombre"
+                value={formData.nombre}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
+              />
+              {errors.nombre && <p className="text-red-500 text-xs">{errors.nombre}</p>}
+            </div>
+
+            {/* Apellido */}
+            <div>
+              <input
+                type="text"
+                name="apellido"
+                placeholder="Apellido"
+                value={formData.apellido}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
+              />
+              {errors.apellido && <p className="text-red-500 text-xs">{errors.apellido}</p>}
+            </div>
+
+            {/* Correo */}
+            <div>
+              <input
+                type="email"
+                name="email"
+                placeholder="Correo electrónico"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
+              />
+              {errors.email && <p className="text-red-500 text-xs">{errors.email}</p>}
+            </div>
+
+            {/* Teléfono */}
+            <div>
+              <input
+                type="tel"
+                name="telefono"
+                placeholder="Número de teléfono"
+                value={formData.telefono}
+                onChange={handleChange}
+                maxLength="15"
+                className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
+              />
+              {errors.telefono && <p className="text-red-500 text-xs">{errors.telefono}</p>}
+            </div>
+
+            {/* Contraseña */}
+            <div>
+              <input
+                type="password"
+                name="password"
+                placeholder="Contraseña"
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
+              />
+              {errors.password && <p className="text-red-500 text-xs">{errors.password}</p>}
+            </div>
+
+            {/* Confirmar Contraseña */}
+            <div>
+              <input
+                type="password"
+                name="confirmPassword"
+                placeholder="Confirmar contraseña"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
+              />
+              {errors.confirmPassword && (
+                <p className="text-red-500 text-xs">{errors.confirmPassword}</p>
+              )}
+            </div>
+
+            {/* Edad */}
+            <div>
+              <input
+                type="number"
+                name="edad"
+                placeholder="Edad"
+                value={formData.edad}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-pink-400 rounded-full focus:outline-none focus:ring-2 focus:ring-pink-400"
+              />
+              {errors.edad && <p className="text-red-500 text-xs">{errors.edad}</p>}
+            </div>
+
+            {/* Género */}
+            <div>
+              <select
+                name="genero"
+                value={formData.genero}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-full bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-pink-400"
+              >
+                <option value="">Género</option>
+                <option value="mujer">Mujer</option>
+                <option value="hombre">Hombre</option>
+                <option value="otro">Otro</option>
+              </select>
+              {errors.genero && <p className="text-red-500 text-xs">{errors.genero}</p>}
+            </div>
+
+            {/* Aceptar términos */}
             <div className="flex items-center text-xs gap-2">
               <input type="checkbox" id="terms" required />
               <label htmlFor="terms" className="text-gray-600">
@@ -207,6 +313,7 @@ const Registro = () => {
               </label>
             </div>
 
+            {/* Botón de envío */}
             <div className="flex flex-col gap-4 mt-4">
               <button
                 type="submit"
@@ -237,8 +344,7 @@ const Registro = () => {
       {/* Footer */}
       <footer className="bg-pink-100 text-center py-4 text-sm text-gray-600 mt-8">
         <p>
-          © {new Date().getFullYear()} Find & Rate — Todos los derechos
-          reservados.
+          © {new Date().getFullYear()} Find & Rate — Todos los derechos reservados.
         </p>
       </footer>
     </div>
