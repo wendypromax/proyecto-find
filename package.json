@@ -1,7 +1,7 @@
 {
-  "name": "nombre_proyecto",
+  "name": "find-and-rate",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -22,6 +22,7 @@
     "mongoose": "^8.18.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-firebase-hooks": "^5.1.1",
     "react-hook-form": "^7.62.0",
     "react-icons": "^4.10.1",
     "react-router-dom": "^6.30.1"

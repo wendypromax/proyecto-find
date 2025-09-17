@@ -1,17 +1,24 @@
-// Import the functions you need from the SDKs you need
+// src/firebaseConfig.js
 import { initializeApp } from "firebase/app";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
+import { getAuth, GoogleAuthProvider } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
-// Your web app's Firebase configuration
+// Configuración de Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyB_YkVDkrHeCJE7EcMQOnRWlPsXTQGNqBY",
   authDomain: "find-and-rate.firebaseapp.com",
   projectId: "find-and-rate",
   storageBucket: "find-and-rate.firebasestorage.app",
   messagingSenderId: "762881368529",
-  appId: "1:762881368529:web:8fbca7a474e340da6d80f0"
+  appId: "1:762881368529:web:79ee5d79d87383cb6d80f0"
 };
 
-// Initialize Firebase
+// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
+
+// Servicios
+const auth = getAuth(app);
+const db = getFirestore(app);
+const googleProvider = new GoogleAuthProvider();
+
+export { auth, db, googleProvider };
