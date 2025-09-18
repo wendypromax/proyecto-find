@@ -1,53 +1,40 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React from "react";
 
 const Dashboard = () => {
-  const navigate = useNavigate();
-  const [user, setUser] = useState({ nombre: "", email: "" });
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    } else {
-      navigate("/login"); // Redirige si no hay sesión
-    }
-  }, [navigate]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
-    navigate("/login");
-  };
+  const user = JSON.parse(localStorage.getItem("user"));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-pink-200 via-pink-100 to-yellow-100 flex flex-col items-center p-8">
-      <div className="w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-8 text-center">
-        <h1 className="text-2xl font-bold mb-4">
-          ¡Bienvenido, {user.nombre || "Usuario"}!
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-pink-100 via-yellow-100 to-pink-200">
+      <div className="bg-white shadow-xl rounded-2xl p-10 w-full max-w-lg text-center">
+        <h1 className="text-3xl font-bold text-pink-600 mb-4">
+          Bienvenido 🎉
         </h1>
+
+        {user ? (
+          <>
+            <p className="text-lg text-gray-700 mb-2">
+              Hola <span className="font-semibold">{user.nombre}</span> 👋
+            </p>
+            <p className="text-sm text-gray-500 mb-6">{user.email}</p>
+          </>
+        ) : (
+          <p className="text-gray-600">No hay usuario logueado.</p>
+        )}
+
         <button
-          onClick={handleLogout}
-          className="mb-6 px-4 py-2 bg-pink-500 text-white rounded-full hover:bg-pink-600 transition"
+          onClick={() => {
+            localStorage.removeItem("user");
+            localStorage.removeItem("token");
+            window.location.href = "/login";
+          }}
+          className="px-6 py-2 bg-gradient-to-r from-pink-400 to-orange-400 text-white font-bold rounded-full hover:opacity-90 transition"
         >
           Cerrar sesión
         </button>
-
-        <p className="text-gray-700 mb-6">
-          Este es tu dashboard. Aquí podrás ver tus datos y gestionar tu cuenta.
-        </p>
-
-        <div className="text-left bg-gray-50 p-4 rounded-lg">
-          <p>
-            <span className="font-semibold">Nombre:</span> {user.nombre}
-          </p>
-          <p>
-            <span className="font-semibold">Email:</span> {user.email}
-          </p>
-        </div>
       </div>
     </div>
   );
 };
 
 export default Dashboard;
+

@@ -1,151 +1,164 @@
-// server.js
-const express = require("express");
-const cors = require("cors");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const mysql = require("mysql2/promise");
-const { OAuth2Client } = require("google-auth-library");
-
-console.log(bcrypt);
+// Server.js (ES Modules)
+import express from "express";
+import mysql from "mysql2/promise";
+import cors from "cors";
+import bcrypt from "bcryptjs";
+import { OAuth2Client } from "google-auth-library";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Configuración de MySQL
-const db = mysql.createPool({
+/* 📌 Conexión a MySQL */
+const pool = mysql.createPool({
   host: "localhost",
   user: "root",
-  password: "", // tu password
-  database: "findyrate", // 🔹 Nombre actualizado de la DB
+  password: "",
+  database: "findyrate", // Cambia según tu DB
 });
 
-// Secret para JWT
-const JWT_SECRET = "tu_secreto_jwt_aqui";
+/* 📌 Cliente de Google */
+const client = new OAuth2Client("TU_CLIENT_ID_DE_GOOGLE");
 
-// Configuración Google OAuth
-const CLIENT_ID = "TU_CLIENT_ID_DE_GOOGLE";
-const client = new OAuth2Client(CLIENT_ID);
-
-/**
- * ============================
- *      REGISTRO DE USUARIO
- * ============================
- */
+/* ============================
+   🔹 Registro de usuario
+   ============================ */
 app.post("/registro", async (req, res) => {
   try {
-    const { tipoUsuario, nombre, apellido, pais, email, telefono, password, edad, genero } = req.body;
+    const {
+      num_doc_usuario,
+      nombre_usuario,
+      apellido_usuario,
+      telefono_usuario,
+      correo_usuario,
+      password_usuario,
+      edad_usuario,
+      genero_usuario,
+      tipoUsuario, // "usuario" o "empresario"
+    } = req.body;
 
-    if (!nombre || !apellido || !pais || !email || !password || !edad || !genero) {
-      return res.status(400).json({ message: "Todos los campos son obligatorios" });
-    }
+    // 🔑 Hashear contraseña
+    const hashedPassword = await bcrypt.hash(password_usuario, 10);
 
-    // Revisar si el email ya existe
-    const [existing] = await db.query("SELECT * FROM usuario WHERE email = ?", [email]);
-    if (existing.length > 0) {
-      return res.status(400).json({ message: "El correo ya está registrado" });
-    }
+    // 🔹 Asignar rol
+    const rol = tipoUsuario === "empresario" ? 2 : 1;
 
-    // Encriptar contraseña
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Insertar usuario en la DB
-    await db.query(
-      `INSERT INTO usuario (tipoUsuario, nombre, apellido, pais, email, telefono, password, edad, genero)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [tipoUsuario, nombre, apellido, pais, email, telefono, hashedPassword, edad, genero]
+    // 📌 Insertar usuario
+    const [result] = await pool.query(
+      `INSERT INTO usuario 
+      (num_doc_usuario, nombre_usuario, apellido_usuario, telefono_usuario, correo_usuario, estado_usuario, password_usuario, edad_usuario, genero_usuario, id_tipo_rolfk)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        num_doc_usuario,
+        nombre_usuario,
+        apellido_usuario,
+        telefono_usuario,
+        correo_usuario,
+        "activo",
+        hashedPassword,
+        edad_usuario,
+        genero_usuario,
+        rol,
+      ]
     );
 
-    res.status(201).json({ message: "Usuario registrado correctamente" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error en el servidor" });
+    res.json({
+      success: true,
+      message: "Usuario registrado correctamente",
+      userId: result.insertId,
+    });
+  } catch (error) {
+    console.error("Error en registro:", error);
+    res.status(500).json({ success: false, message: "Error en el registro", error });
   }
 });
 
-/**
- * ============================
- *      LOGIN CON EMAIL
- * ============================
- */
+/* ============================
+   🔹 Login normal
+   ============================ */
 app.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { correo_usuario, password_usuario } = req.body;
 
-    if (!email || !password)
-      return res.status(400).json({ message: "Correo y contraseña son obligatorios" });
+    const [rows] = await pool.query(
+      "SELECT * FROM usuario WHERE correo_usuario = ?",
+      [correo_usuario]
+    );
 
-    const [userResult] = await db.query("SELECT * FROM usuario WHERE email = ?", [email]);
-    if (userResult.length === 0) {
-      return res.status(400).json({ message: "Usuario no encontrado" });
-    }
+    if (rows.length === 0)
+      return res.status(400).json({ success: false, message: "Usuario no encontrado" });
 
-    const user = userResult[0];
+    const user = rows[0];
+    const isMatch = await bcrypt.compare(password_usuario, user.password_usuario);
 
-    // Validar contraseña
-    const isValid = await bcrypt.compare(password, user.password);
-    if (!isValid) {
-      return res.status(400).json({ message: "Contraseña incorrecta" });
-    }
+    if (!isMatch)
+      return res.status(400).json({ success: false, message: "Contraseña incorrecta" });
 
-    // Generar JWT
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "1h" });
-
-    res.json({ message: "Login exitoso", token });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error en el servidor" });
+    res.json({ success: true, message: "Login exitoso", user });
+  } catch (error) {
+    console.error("Error en login:", error);
+    res.status(500).json({ success: false, message: "Error en login", error });
   }
 });
 
-/**
- * ============================
- *      LOGIN CON GOOGLE
- * ============================
- */
+/* ============================
+   🔹 Login con Google
+   ============================ */
 app.post("/google-login", async (req, res) => {
   try {
-    const { idToken } = req.body;
-    if (!idToken) return res.status(400).json({ message: "Token de Google es obligatorio" });
+    const { token } = req.body;
+
+    if (!token) return res.status(400).json({ success: false, message: "Token de Google requerido" });
 
     const ticket = await client.verifyIdToken({
-      idToken,
-      audience: CLIENT_ID,
+      idToken: token,
+      audience: "TU_CLIENT_ID_DE_GOOGLE",
     });
 
     const payload = ticket.getPayload();
-    const { email, given_name, family_name } = payload;
+    const correo_usuario = payload.email;
+    const nombre_usuario = payload.given_name;
+    const apellido_usuario = payload.family_name || "";
+    const genero_usuario = payload.gender || "no especificado";
 
-    // Revisar si el usuario ya existe
-    const [existing] = await db.query("SELECT * FROM usuario WHERE email = ?", [email]);
-    let userId;
+    const [rows] = await pool.query("SELECT * FROM usuario WHERE correo_usuario = ?", [correo_usuario]);
 
-    if (existing.length === 0) {
-      // Crear usuario nuevo
-      const [result] = await db.query(
-        `INSERT INTO usuario (tipoUsuario, nombre, apellido, email)
-         VALUES (?, ?, ?, ?)`,
-        ["usuario", given_name, family_name, email]
+    let user;
+    if (rows.length === 0) {
+      const [result] = await pool.query(
+        `INSERT INTO usuario
+        (num_doc_usuario, nombre_usuario, apellido_usuario, telefono_usuario, correo_usuario, estado_usuario, password_usuario, edad_usuario, genero_usuario, id_tipo_rolfk)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          "google-" + Date.now(),
+          nombre_usuario,
+          apellido_usuario,
+          "0000000000",
+          correo_usuario,
+          "activo",
+          "",
+          0,
+          genero_usuario,
+          1, // rol por defecto
+        ]
       );
-      userId = result.insertId;
+
+      const [newUser] = await pool.query("SELECT * FROM usuario WHERE id_usuario = ?", [result.insertId]);
+      user = newUser[0];
     } else {
-      userId = existing[0].id;
+      user = rows[0];
     }
 
-    // Generar JWT
-    const token = jwt.sign({ id: userId, email }, JWT_SECRET, { expiresIn: "1h" });
-
-    res.json({ message: "Login con Google exitoso", token });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Error con login de Google" });
+    res.json({ success: true, message: "Login con Google exitoso", user });
+  } catch (error) {
+    console.error("Google Login Error:", error);
+    res.status(500).json({ success: false, message: "Error en login con Google", error });
   }
 });
 
-/**
- * ============================
- *      SERVIDOR ESCUCHANDO
- * ============================
- */
-const PORT = 5000;
-app.listen(PORT, () => console.log(`Servidor corriendo en puerto ${PORT}`));
+/* ============================
+   🔹 Servidor
+   ============================ */
+app.listen(5000, () => {
+  console.log("🚀 Servidor corriendo en http://localhost:5000");
+});

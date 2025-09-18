@@ -1,23 +1,16 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "main": "Server.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node Server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
-    "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.2",
+    "express": "^4.19.2",
+    "mysql2": "^3.10.0",
     "cors": "^2.8.5",
-    "express": "^5.1.0",
-    "google-auth-library": "^10.3.0",
-    "jsonwebtoken": "^9.0.2",
-    "mysql": "^2.18.1",
-    "mysql2": "^3.14.5"
+    "bcryptjs": "^2.4.3",
+    "google-auth-library": "^9.0.0"
   }
 }
