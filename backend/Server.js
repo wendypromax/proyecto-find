@@ -14,7 +14,7 @@ const pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
-  database: "findyrate", // Cambia según tu DB
+  database: "findyrate", // Asegúrate que existe
 });
 
 /* 📌 Cliente de Google */
@@ -89,6 +89,22 @@ app.post("/login", async (req, res) => {
       return res.status(400).json({ success: false, message: "Usuario no encontrado" });
 
     const user = rows[0];
+
+    // ✅ Si la contraseña guardada no es hash bcrypt, la convertimos
+    if (!/^\$2[aby]\$/.test(user.password_usuario)) {
+      console.log("⚠ Contraseña en texto plano detectada, convirtiendo a hash...");
+
+      const hashedPassword = await bcrypt.hash(user.password_usuario, 10);
+
+      await pool.query("UPDATE usuario SET password_usuario = ? WHERE id_usuario = ?", [
+        hashedPassword,
+        user.id_usuario,
+      ]);
+
+      user.password_usuario = hashedPassword;
+    }
+
+    // 🔑 Comparar la contraseña ingresada con el hash
     const isMatch = await bcrypt.compare(password_usuario, user.password_usuario);
 
     if (!isMatch)
