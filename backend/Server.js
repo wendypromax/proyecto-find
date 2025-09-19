@@ -1,174 +1,134 @@
-// Server.js (ES Modules)
 import express from "express";
 import mysql from "mysql2/promise";
 import cors from "cors";
 import bcrypt from "bcryptjs";
-import { OAuth2Client } from "google-auth-library";
+import nodemailer from "nodemailer";
+import crypto from "crypto";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-/* 📌 Conexión a MySQL */
+/* ============================
+   🔹 Conexión a MySQL
+   ============================ */
 const pool = mysql.createPool({
   host: "localhost",
   user: "root",
   password: "",
-  database: "findyrate", // Asegúrate que existe
-});
-
-/* 📌 Cliente de Google */
-const client = new OAuth2Client("TU_CLIENT_ID_DE_GOOGLE");
-
-/* ============================
-   🔹 Registro de usuario
-   ============================ */
-app.post("/registro", async (req, res) => {
-  try {
-    const {
-      num_doc_usuario,
-      nombre_usuario,
-      apellido_usuario,
-      telefono_usuario,
-      correo_usuario,
-      password_usuario,
-      edad_usuario,
-      genero_usuario,
-      tipoUsuario, // "usuario" o "empresario"
-    } = req.body;
-
-    // 🔑 Hashear contraseña
-    const hashedPassword = await bcrypt.hash(password_usuario, 10);
-
-    // 🔹 Asignar rol
-    const rol = tipoUsuario === "empresario" ? 2 : 1;
-
-    // 📌 Insertar usuario
-    const [result] = await pool.query(
-      `INSERT INTO usuario 
-      (num_doc_usuario, nombre_usuario, apellido_usuario, telefono_usuario, correo_usuario, estado_usuario, password_usuario, edad_usuario, genero_usuario, id_tipo_rolfk)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        num_doc_usuario,
-        nombre_usuario,
-        apellido_usuario,
-        telefono_usuario,
-        correo_usuario,
-        "activo",
-        hashedPassword,
-        edad_usuario,
-        genero_usuario,
-        rol,
-      ]
-    );
-
-    res.json({
-      success: true,
-      message: "Usuario registrado correctamente",
-      userId: result.insertId,
-    });
-  } catch (error) {
-    console.error("Error en registro:", error);
-    res.status(500).json({ success: false, message: "Error en el registro", error });
-  }
+  database: "findyrate", // Cambia según tu DB
 });
 
 /* ============================
-   🔹 Login normal
+   🔹 Recuperar cuenta
    ============================ */
-app.post("/login", async (req, res) => {
+app.post("/recuperar-cuenta", async (req, res) => {
   try {
-    const { correo_usuario, password_usuario } = req.body;
+    const { correo } = req.body;
+
+    if (!correo)
+      return res.status(400).json({ success: false, message: "Correo requerido" });
 
     const [rows] = await pool.query(
       "SELECT * FROM usuario WHERE correo_usuario = ?",
-      [correo_usuario]
+      [correo]
     );
 
-    if (rows.length === 0)
-      return res.status(400).json({ success: false, message: "Usuario no encontrado" });
+    if (rows.length === 0) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Correo no registrado" });
+    }
 
     const user = rows[0];
 
-    // ✅ Si la contraseña guardada no es hash bcrypt, la convertimos
-    if (!/^\$2[aby]\$/.test(user.password_usuario)) {
-      console.log("⚠ Contraseña en texto plano detectada, convirtiendo a hash...");
+    // 🔹 Generar token seguro
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiration = new Date(Date.now() + 3600 * 1000); // 1 hora
 
-      const hashedPassword = await bcrypt.hash(user.password_usuario, 10);
+    // Guardar token en la DB
+    await pool.query(
+      "UPDATE usuario SET reset_token = ?, reset_token_expiration = ? WHERE id_usuario = ?",
+      [token, expiration, user.id_usuario]
+    );
 
-      await pool.query("UPDATE usuario SET password_usuario = ? WHERE id_usuario = ?", [
-        hashedPassword,
-        user.id_usuario,
-      ]);
+    // 🔹 Configurar Nodemailer (Gmail)
+   const transporter = nodemailer.createTransport({
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true,
+  auth: {
+    user: "tuemail@gmail.com",      // tu correo real
+    pass: "tu_app_password",        // App Password de 16 caracteres
+  },
+});
 
-      user.password_usuario = hashedPassword;
+    const resetLink = `http://localhost:3000/reset-password?token=${token}`;
+
+    try {
+      const info = await transporter.sendMail({
+        from: '"Find & Rate" <tuemail@gmail.com>',
+        to: correo,
+        subject: "Recuperación de contraseña",
+        html: `<p>Hola ${user.nombre_usuario},</p>
+               <p>Haz clic en el siguiente enlace para restablecer tu contraseña:</p>
+               <a href="${resetLink}">${resetLink}</a>
+               <p>Este enlace expira en 1 hora.</p>`,
+      });
+
+      console.log("Correo enviado, ID:", info.messageId);
+      res.json({ success: true, message: "¡Enlace de recuperación enviado correctamente!" });
+
+    } catch (err) {
+      console.error("Error enviando correo:", err);
+      res.status(500).json({ success: false, message: "No se pudo enviar el correo", error: err });
     }
 
-    // 🔑 Comparar la contraseña ingresada con el hash
-    const isMatch = await bcrypt.compare(password_usuario, user.password_usuario);
-
-    if (!isMatch)
-      return res.status(400).json({ success: false, message: "Contraseña incorrecta" });
-
-    res.json({ success: true, message: "Login exitoso", user });
   } catch (error) {
-    console.error("Error en login:", error);
-    res.status(500).json({ success: false, message: "Error en login", error });
+    console.error("Error en recuperar-cuenta:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error en la recuperación de cuenta", error });
   }
 });
 
 /* ============================
-   🔹 Login con Google
+   🔹 Restablecer contraseña
    ============================ */
-app.post("/google-login", async (req, res) => {
+app.post("/reset-password", async (req, res) => {
   try {
-    const { token } = req.body;
+    const { token, nuevaPassword } = req.body;
 
-    if (!token) return res.status(400).json({ success: false, message: "Token de Google requerido" });
+    if (!token || !nuevaPassword)
+      return res
+        .status(400)
+        .json({ success: false, message: "Token y nueva contraseña requeridos" });
 
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: "TU_CLIENT_ID_DE_GOOGLE",
-    });
+    const [rows] = await pool.query(
+      "SELECT * FROM usuario WHERE reset_token = ? AND reset_token_expiration > NOW()",
+      [token]
+    );
 
-    const payload = ticket.getPayload();
-    const correo_usuario = payload.email;
-    const nombre_usuario = payload.given_name;
-    const apellido_usuario = payload.family_name || "";
-    const genero_usuario = payload.gender || "no especificado";
-
-    const [rows] = await pool.query("SELECT * FROM usuario WHERE correo_usuario = ?", [correo_usuario]);
-
-    let user;
     if (rows.length === 0) {
-      const [result] = await pool.query(
-        `INSERT INTO usuario
-        (num_doc_usuario, nombre_usuario, apellido_usuario, telefono_usuario, correo_usuario, estado_usuario, password_usuario, edad_usuario, genero_usuario, id_tipo_rolfk)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          "google-" + Date.now(),
-          nombre_usuario,
-          apellido_usuario,
-          "0000000000",
-          correo_usuario,
-          "activo",
-          "",
-          0,
-          genero_usuario,
-          1, // rol por defecto
-        ]
-      );
-
-      const [newUser] = await pool.query("SELECT * FROM usuario WHERE id_usuario = ?", [result.insertId]);
-      user = newUser[0];
-    } else {
-      user = rows[0];
+      return res
+        .status(400)
+        .json({ success: false, message: "Token inválido o expirado" });
     }
 
-    res.json({ success: true, message: "Login con Google exitoso", user });
+    const user = rows[0];
+    const hashedPassword = await bcrypt.hash(nuevaPassword, 10);
+
+    await pool.query(
+      "UPDATE usuario SET password_usuario = ?, reset_token = NULL, reset_token_expiration = NULL WHERE id_usuario = ?",
+      [hashedPassword, user.id_usuario]
+    );
+
+    res.json({ success: true, message: "Contraseña actualizada correctamente" });
   } catch (error) {
-    console.error("Google Login Error:", error);
-    res.status(500).json({ success: false, message: "Error en login con Google", error });
+    console.error("Error en reset-password:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Error al actualizar la contraseña", error });
   }
 });
 
